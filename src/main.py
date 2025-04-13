@@ -1,12 +1,13 @@
 import os
 import shutil
+import sys
 
 from blocks import markdown_to_html_node
 
 
 def reset_public_folder():
-    shutil.rmtree("public/")
-    shutil.copytree("static/", "public/")
+    shutil.rmtree("docs/")
+    shutil.copytree("static/", "docs/")
 
 
 def extract_title(markdown):
@@ -19,7 +20,7 @@ def extract_title(markdown):
     return title
 
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(base_path, from_path, template_path, dest_path):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
 
     with open(from_path, "r") as from_file:
@@ -35,6 +36,9 @@ def generate_page(from_path, template_path, dest_path):
     content = content_template.replace("{{ Title }}", title)
     content = content.replace("{{ Content }}", html)
 
+    content = content.replace('href="/', f'href="{base_path}')
+    content = content.replace('src="/', f'src="{base_path}')
+
     current_folder = ""
     for folder in dest_path.split("/")[:-1]:
         current_folder = os.path.join(current_folder, folder)
@@ -45,7 +49,7 @@ def generate_page(from_path, template_path, dest_path):
         dest_file.write(content)
 
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(base_path, dir_path_content, template_path, dest_dir_path):
     objs = os.listdir(dir_path_content)
     for obj in objs:
         from_path_obj = os.path.join(dir_path_content, obj)
@@ -53,17 +57,25 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
         if os.path.isfile(from_path_obj):
             dest_path_obj = dest_path_obj.replace(".md", ".html")
             generate_page(
+                base_path,
                 from_path_obj,
                 template_path,
                 dest_path_obj,
             )
         else:
-            generate_pages_recursive(from_path_obj, template_path, dest_path_obj)
+            generate_pages_recursive(
+                base_path,
+                from_path_obj,
+                template_path,
+                dest_path_obj,
+            )
 
 
 def main():
     reset_public_folder()
-    generate_pages_recursive("./content/", "./template.html", "./public/")
+    arg = sys.argv[0]
+    base_path = arg if arg != "" else "/"
+    generate_pages_recursive(base_path, "./content/", "./template.html", "./docs/")
 
 
 main()
